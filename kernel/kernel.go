@@ -3,6 +3,7 @@ package kernel
 import (
 	"errors"
 	"fmt"
+	"github.com/Naranim/gonet/network"
 	"log"
 	"os"
 	"os/exec"
@@ -12,6 +13,11 @@ import (
 
 const (
 	binaryName = "netkit-kernel"
+)
+
+const (
+	ALREADY_RUNNING = "network running"
+	NOT_RUNNING     = "network not running"
 )
 
 var (
@@ -61,9 +67,11 @@ func init() {
 }
 
 type Kernel struct {
-	path   string
-	strVal map[string]string
-	bVal   map[string]bool
+	running bool
+	path    string
+	bashrc  string
+	strVal  map[string]string
+	bVal    map[string]bool
 }
 
 func flagSupported(flagName string, flagList []string) bool {
@@ -82,6 +90,10 @@ func (k *Kernel) SetFlag(key, val string) error {
 	}
 	k.strVal[key] = val
 	return nil
+}
+
+func New(flags int) *Kernel {
+
 }
 
 func NewKernel() *Kernel {
@@ -118,32 +130,32 @@ func (k *Kernel) getFlags() []string {
 	return tmp
 }
 
-func (k *Kernel) Run(verbose bool) error {
+func (k *Kernel) Run() error {
 	command := exec.Command(k.path, k.getFlags()...)
 	err := command.Run()
 	if err != nil {
-		if verbose {
-			log.Fatal(err.Error())
-		}
 		return err
 	}
 	return nil
 }
 
 func (k *Kernel) Stop() error {
+	if !k.IsRunning() {
+		return errors.New(NOT_RUNNING)
+	}
 	return nil
 }
 
 func (k *Kernel) IsRunning() bool {
-	return nil
+	return k.running
 }
 
-func (k *Kernel) AddConnection(hub Hubber, eth uint8) error {
+func (k *Kernel) AddConnection(hub network.Hubber, eth uint8) error {
 	return nil
 }
 
 func (k *Kernel) ShortInfo() string {
-	return nil
+	return fmt.Sprintf("kernel: %s", k.Name())
 }
 
 func (k *Kernel) String() string {
@@ -155,4 +167,19 @@ func (k *Kernel) String() string {
 		tmp[i+len(kernelStringFlags)] = fmt.Sprintf("%v: %v\n", name, k.bVal[name])
 	}
 	return strings.Join(tmp, "\n")
+}
+
+func (k *Kernel) addStartCommand(command string) {
+	k.bashrc += command + "\n"
+}
+
+func routingCommand(ip string, eth int) {
+
+}
+
+func (k *Kernel) AddRouting(ip string, eth int) error {
+	if k.IsRunning() {
+		return errors.New(ALREADY_RUNNING)
+	}
+	return nil
 }

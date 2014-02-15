@@ -1,7 +1,6 @@
 package network
 
 import (
-	"container/list"
 	"errors"
 )
 
@@ -10,11 +9,19 @@ const (
 	NOT_RUNNING     = "network not running"
 )
 
+const (
+	VERBOSE = 1 << iota
+	SATIC_ROUTING
+	DYNAMIC_ROUTING
+)
+
 type Kerneler interface {
+	New(flags int) error
 	Run() error
 	Stop() error
 	IsRunning() bool
 	AddConnection(hub Hubber, eth uint8) error
+	AddRouting(ip string, eth int) error
 	ShortInfo() string
 }
 
@@ -41,17 +48,17 @@ type Network struct {
 func New(kernelProvider *KernelProvider, hubProvider *HubProvider) *Network {
 	ret := new(Network)
 	ret.running = false
-	ret.kernels = list.New()
+	ret.kernels = make(map[string]*Kerneler)
 	ret.hubProvider = hubProvider
 	ret.kernelProvider = kernelProvider
 	return ret
 }
 
-func (n *Network) AddKernel(k *Kerneler) error {
+func (n *Network) AddKernel(name string, k *Kerneler) error {
 	if n.running {
 		return errors.New(ALREADY_RUNNING)
 	}
-	n.kernels.PushBack(k)
+	n.kernels[name] = k
 	return nil
 }
 
@@ -60,11 +67,8 @@ func (n *Network) Run() error {
 		return errors.New(ALREADY_RUNNING)
 	}
 
-	for e := n.kernels.Front(); e != nil; e = e.Next() {
-		var i interface{}
-		i = e
-		currKernel := i.(Kerneler)
-		err := currKernel.Run()
+	for _, ker := range n.kernels {
+		err := (*ker).Run()
 		if err != nil {
 			n.Stop()
 			return err
@@ -81,11 +85,8 @@ func (n *Network) Stop() error {
 
 	problems := ""
 
-	for e := n.kernels.Front(); e != nil; e = e.Next() {
-		var i interface{}
-		i = e
-		currKernel := i.(Kerneler)
-		err := currKernel.Stop()
+	for _, ker := range n.kernels {
+		err := (*ker).Stop()
 		if err != nil {
 			if problems == "" {
 				problems = err.Error()

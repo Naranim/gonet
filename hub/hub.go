@@ -1,10 +1,8 @@
 package hub
 
 import (
-	"math/rand"
 	"os"
 	"path"
-	// "strings"
 )
 
 func init() {
